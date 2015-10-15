@@ -35,3 +35,14 @@ The following applications are required.
 #### pip installs
 	pip install -r requirements.txt
 	pip install -e "git+https://github.com/jgarff/rpi_ws281x.git#egg=rpi_ws281x&subdirectory=python"
+
+
+### 3. Setup
+
+#### Check i2c devices
+    sudo i2cdetect -y 1
+    
+    
+### Code Refences
+* https://learn.adafruit.com/neopixels-on-raspberry-pi/software
+* http://www.stuffaboutcode.com/2014/06/raspberry-pi-adxl345-accelerometer.html
