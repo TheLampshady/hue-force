@@ -32,9 +32,13 @@ The following applications are required.
 * Neo Pixels
 	* https://github.com/jgarff/rpi_ws281x.git
 
+#### scons
+    git clone https://github.com/jgarff/rpi_ws281x.git
+    cd rpi_ws281x
+    scons
+
 #### pip installs
 	pip install -r requirements.txt
-	pip install -e "git+https://github.com/jgarff/rpi_ws281x.git#egg=rpi_ws281x&subdirectory=python"
 
 
 ### 3. Setup
