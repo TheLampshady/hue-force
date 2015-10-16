@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import sys
 import time
 
 #import the adxl345 and neopixel module
@@ -27,15 +27,11 @@ class LightStrip(Adafruit_NeoPixel):
     def __init__(self, count, limit, pin=18):
         LED_COUNT   = count   # Number of LED pixels.
         LED_PIN     = pin     # GPIO pin connected to the pixels (must support PWM!).
-        LED_FREQ_HZ = 800000  # LED signal frequency in hertz (usually 800khz)
-        LED_DMA     = 5       # DMA channel to use for generating signal (try 5)
-        LED_INVERT  = False   # True to invert the signal (when using NPN transistor level shift)
-
+        
         self.limit = limit
 
         # Create NeoPixel object with appropriate configuration.    
-        #Adafruit_NeoPixel.__init__(self, LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT)
-        super(LightStrip, self).__init__(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT)
+        super(LightStrip, self).__init__(LED_COUNT, LED_PIN)
 
         # Intialize the library (must be called once before other functions).
         self.begin()
@@ -46,10 +42,10 @@ class LightStrip(Adafruit_NeoPixel):
         red = abs(int(axes['x']*mod))
         blue = abs(int(axes['y']*mod))
         green = abs(int(axes['z']*mod))
-        color = Color(red, green, blue)
-
-        self.set_color(self, color, bright)
-        self.set_brightness(self, red+green+blue)
+        color = Color(red, blue, green)
+        print "%s %s %s" % (red, blue, green)
+        self.set_color(color)
+        self.set_brightness(red+green+blue)
         self.show()
 
     # Define functions which animate LEDs in various ways.
@@ -60,24 +56,36 @@ class LightStrip(Adafruit_NeoPixel):
 
 
     def set_brightness(self, bright):
-        bright = 255 if bright > 255 else bright
+        if bright > 255:
+            bright = 255
+        elif bright < 20:
+            bright = 20
+ 
         self.setBrightness(bright)
 
+def display_status(status, count):
+    if not count:
+        sys.stdout.write("                                            \r")
+        sys.stdout.write("%s\r" % status)
+        sys.stdout.flush()
 
 def main():
     LIMIT = 16
 
-    #accel = ADXL345()
     accel = Accelerometer(LIMIT)
-    #strip = get_strip(25)
     strip = LightStrip(25, LIMIT)
 
     print "Light Force Engage!: Ctrl-C to exit."
     
-
+    count = 0
     while True:
         axes = accel.getAxes(True)
+        display_status(str(axes), count)
         strip.draw(axes)
-        
+        count += 1
+        if count > 100:
+            count = 0
+
+
 if __name__ == "main":
     main()
