@@ -40,13 +40,28 @@ class LightStrip(Adafruit_NeoPixel):
         # Intialize the library (must be called once before other functions).
         self.begin()
 
-    def set_color(self, axes):
+    def draw(self, axes):
         mod = 255 / float(self.limit)
 
-        red = int(axes['x']*mod)
-        blue = int(axes['y']*mod)
-        green = int(axes['z']*mod)
-        colorWipe(self, Color(red, green, blue)) # Red wipe
+        red = abs(int(axes['x']*mod))
+        blue = abs(int(axes['y']*mod))
+        green = abs(int(axes['z']*mod))
+        color = Color(red, green, blue)
+
+        self.set_color(self, color, bright)
+        self.set_brightness(self, red+green+blue)
+        self.show()
+
+    # Define functions which animate LEDs in various ways.
+    def set_color(self, color):
+        """Wipe color across display a pixel at a time."""
+        for i in range(self.numPixels()):
+            self.setPixelColor(i, color)
+
+
+    def set_brightness(self, bright):
+        bright = 255 if bright > 255 else bright
+        self.setBrightness(bright)
 
 
 def main():
@@ -62,8 +77,7 @@ def main():
 
     while True:
         axes = accel.getAxes(True)
-        strip.set_color(axes)
+        strip.draw(axes)
         
 if __name__ == "main":
-    print "Starting..."
     main()
