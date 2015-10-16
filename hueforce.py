@@ -17,7 +17,7 @@ class Accelerometer(adxl345.ADXL345):
     }
 
     def __init__(self, limit=2):
-         super(Accelerometer, self).setUp()
+         super(Accelerometer, self).__init__()
          self.setRange(g_range.get(limit, 0))
 
 
@@ -34,7 +34,7 @@ class LightStrip(Adafruit_NeoPixel):
         self.limit = limit
 
         # Create NeoPixel object with appropriate configuration.    
-        super(LightStrip, self, LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT).setUp()
+        super(LightStrip, self).__init__(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT)
 
         # Intialize the library (must be called once before other functions).
         self.begin()
@@ -64,4 +64,5 @@ def main():
         strip.set_color(axes)
         
 if __name__ == "main":
+    print "Starting..."
     main()
