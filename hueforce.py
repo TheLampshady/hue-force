@@ -43,7 +43,7 @@ class LightStrip(Adafruit_NeoPixel):
         blue = abs(int(axes['y']*mod))
         green = abs(int(axes['z']*mod))
         color = Color(red, blue, green)
-        print "%s %s %s" % (red, blue, green)
+        
         self.set_color(color)
         self.set_brightness(red+green+blue)
         self.show()
