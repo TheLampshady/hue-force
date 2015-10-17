@@ -1,1 +1,2 @@
+mock
 git+https://github.com/TheLampshady/adxl345-python.git

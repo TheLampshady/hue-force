@@ -1,25 +1,42 @@
 #!/usr/bin/env python
 import sys
 import time
+import argparse
 
 from accelerometer import Accelerometer
 from light_strip import LightStrip
 
-def class HueForce(object):
-    self.iteration = 0
 
-    def __init__(self, lights, limit):
+class HueForce(object):
+    iteration = 0
+
+    def __init__(self, lights, limit, delta=5):
         self.accel = Accelerometer(limit)
         self.strip = LightStrip(lights, limit)
+        self.queue = [(0, 0, 0) for x in range(0,delta)]
 
-    def run():
+    def run(self):
         while True:
             self.set_force()
 
-    def set_force():
-        axes = accel.getAxes(True)
-        display_status(str(axes))
-        strip.draw(axes['x'], axes['y'], axes['z'])
+    def set_force(self):
+        axes = self.accel.getAxes(True)
+        self.display_status(str(axes))
+
+        x, y, z = self.merge_results
+
+        self.strip.draw(axes['x'], axes['y'], axes['z'])
+
+    def merge_results(self, axes):
+        self.queue.append(axes['x'], axes['y'], axes['z'])
+
+        result = []
+        for r in range(0,3):
+            a = [q[r] for q in self.queue]
+            result[r] = sum(a) / float(len(a))
+
+        del self.queue[0]
+        return tuple(result)
 
     def display_status(self, status):
         if not self.iteration:
@@ -35,25 +52,28 @@ def class HueForce(object):
 def get_args():
     parser = argparse.ArgumentParser(prog='Hue Force fists of light.')
     parser.add_argument(
-        '-l', '--lights', required=True, type=int, 
+        '-l', '--lights', required=True, type=int,
         help='Number of lights on the neo pixels')
     parser.add_argument(
-        '-f', '--force', default=2, 
-        type=int, choices=[2, 4, 8, 16], 
+        '-f', '--force', default=2,
+        type=int, choices=[2, 4, 8, 16],
         help='G-Froce range to measure')
-    
+
     return parser.parse_args()
 
+
 def main():
-    '''
+    """
     Parses arguments and runs HueForce
-    '''
+    :return:
+    """
     args = get_args()
 
     hueforce = HueForce(args.lights, args.force)
 
     print "Light Force Engage!: Ctrl-C to exit."
     hueforce.run()
+
 
 if __name__ == "main":
     main()
