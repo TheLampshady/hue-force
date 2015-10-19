@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 import sys
 import time
 import argparse
@@ -23,17 +23,17 @@ class HueForce(object):
         axes = self.accel.getAxes(True)
         self.display_status(str(axes))
 
-        x, y, z = self.merge_results
+        x, y, z = self.merge_results(axes)
 
-        self.strip.draw(axes['x'], axes['y'], axes['z'])
+        self.strip.draw(x, y, z)
 
     def merge_results(self, axes):
-        self.queue.append(axes['x'], axes['y'], axes['z'])
+        self.queue.append((axes['x'], axes['y'], axes['z']))
 
         result = []
         for r in range(0,3):
             a = [q[r] for q in self.queue]
-            result[r] = sum(a) / float(len(a))
+            result.append(sum(a) / float(len(a)))
 
         del self.queue[0]
         return tuple(result)
@@ -75,5 +75,5 @@ def main():
     hueforce.run()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
