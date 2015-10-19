@@ -46,6 +46,12 @@ The following applications are required.
 #### Check i2c devices
     sudo i2cdetect -y 1
     
+#### Run on startup
+    # update boot / reboot files
+    sudo cp hueforce /etc/init.d/
+    # do it as soon as the device is going down,
+    #   both for shutdown and reboot
+    sudo update-rc.d hueforce defaults
     
 ### Code Refences
 * https://learn.adafruit.com/neopixels-on-raspberry-pi/software
