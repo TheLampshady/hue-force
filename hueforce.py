@@ -2,6 +2,8 @@
 import sys
 import time
 import argparse
+import os
+import signal
 
 from accelerometer import Accelerometer
 from light_strip import LightStrip
@@ -10,20 +12,22 @@ from light_strip import LightStrip
 class HueForce(object):
     iteration = 0
 
-    def __init__(self, lights, limit, delta=5):
+    def __init__(self, lights, limit, debug, delta=10):
         self.accel = Accelerometer(limit)
         self.strip = LightStrip(lights, limit)
+        self.debug = debug
         self.queue = [(0, 0, 0) for x in range(0,delta)]
 
-    def run(self):
+    def run(self, delay=0.02):
         while True:
             self.set_force()
+            time.sleep(delay)
 
     def set_force(self):
         axes = self.accel.getAxes(True)
-        self.display_status(str(axes))
 
         x, y, z = self.merge_results(axes)
+        self.display_status(str(axes), str(x+y+z))
 
         self.strip.draw(x, y, z)
 
@@ -38,10 +42,10 @@ class HueForce(object):
         del self.queue[0]
         return tuple(result)
 
-    def display_status(self, status):
-        if not self.iteration:
+    def display_status(self, axes, bright):
+        if not self.iteration and self.debug:
             sys.stdout.write("                                            \r")
-            sys.stdout.write("%s\r" % status)
+            sys.stdout.write("%s - %s\r" % (axes, bright))
             sys.stdout.flush()
 
         self.iteration += 1
@@ -51,6 +55,9 @@ class HueForce(object):
 
 def get_args():
     parser = argparse.ArgumentParser(prog='Hue Force fists of light.')
+    parser.add_argument(
+        '-d', '--debug', dest='debug', 
+        action='store_true', help="Logs Axes Force to screen.")
     parser.add_argument(
         '-l', '--lights', required=True, type=int,
         help='Number of lights on the neo pixels')
@@ -69,9 +76,11 @@ def main():
     """
     args = get_args()
 
-    hueforce = HueForce(args.lights, args.force)
+    hueforce = HueForce(args.lights, args.force, args.debug)
 
-    print "Light Force Engage!: Ctrl-C to exit."
+    print "Light Force Engage!"
+    if args.debug:
+        print "Press Ctrl-C to exit."
     hueforce.run()
 
 

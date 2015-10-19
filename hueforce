@@ -4,14 +4,14 @@ workdir=/home/pi/accel/hue-force
  
 start() {
     cd $workdir
-    python ./hueforce.py &
+    sudo python ./hueforce.py -l 32 -f 16 &
     echo "Hue Force started."
 }
  
 stop() {
     pid=`ps -ef | grep 'hueforce' | awk '{ print $2 }'`
     echo $pid
-    kill $pid
+    sudo kill $pid > /dev/null 2>&1
     sleep 2
     echo "Hue Force killed."
 }
