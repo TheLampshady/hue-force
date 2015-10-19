@@ -60,7 +60,7 @@ def get_args():
         help='G-Froce range to measure')
 
     return parser.parse_args()
-
+    
 
 def main():
     """
@@ -75,5 +75,12 @@ def main():
     hueforce.run()
 
 
+def set_exit_handler(func):
+    signal.signal(signal.SIGTERM, func)
+def on_exit(sig, func=None):
+    print "exit handler triggered"
+    sys.exit(1)
+
 if __name__ == "__main__":
+    set_exit_handler(on_exit)
     main()
