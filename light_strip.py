@@ -36,10 +36,15 @@ class LightStrip(Adafruit_NeoPixel):
             self.setPixelColor(i, color)
 
 
-    def set_brightness(self, bright, delta=0.1):
+    def set_brightness(self, bright, delta=1.0):
         bright = abs(int(math.pow(float(bright),1.5)/16))
         bright = min(bright, 255)
         bright = max(bright,15)
+        
+        if self.brightness > 250:
+            delta = delta*0.002 
+        elif self.brightness > 240:
+            delta = delta*0.02
 
         self.brightness = self.brightness - delta if bright < self.brightness else bright
         

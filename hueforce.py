@@ -29,7 +29,7 @@ class HueForce(object):
         x, y, z = self.merge_results(axes)
 
         self.strip.draw(x, y, z)
-        self.display_status(str(axes), str(x+y+z))
+        self.display_status(str(axes), str(self.strip.brightness))
 
     def merge_results(self, axes):
         self.queue.append((abs(axes['x']), abs(axes['y']), abs(axes['z'])))
