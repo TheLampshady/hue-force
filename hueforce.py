@@ -27,12 +27,12 @@ class HueForce(object):
         axes = self.accel.getAxes(True)
 
         x, y, z = self.merge_results(axes)
-        self.display_status(str(axes), str(x+y+z))
 
         self.strip.draw(x, y, z)
+        self.display_status(str(axes), str(x+y+z))
 
     def merge_results(self, axes):
-        self.queue.append((axes['x'], axes['y'], axes['z']))
+        self.queue.append((abs(axes['x']), abs(axes['y']), abs(axes['z'])))
 
         result = []
         for r in range(0,3):

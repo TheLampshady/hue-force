@@ -1,4 +1,5 @@
 from neopixel import *
+import math
 
 
 class LightStrip(Adafruit_NeoPixel):
@@ -8,7 +9,7 @@ class LightStrip(Adafruit_NeoPixel):
         LED_PIN     = pin     # GPIO pin connected to the pixels (must support PWM!).
         
         self.limit = limit
-        self.brightness = 0
+        self.brightness = 0.0
 
         # Create NeoPixel object with appropriate configuration.    
         super(LightStrip, self).__init__(LED_COUNT, LED_PIN)
@@ -35,13 +36,11 @@ class LightStrip(Adafruit_NeoPixel):
             self.setPixelColor(i, color)
 
 
-    def set_brightness(self, bright, delta=1):
-        if bright > 255:
-            bright = 255
-        elif bright < 15:
-            bright = 15
-        if bright < self.brightness:
-            self.brightness = self.brightness - delta
-        else:
-            self.brightness = bright
-        self.setBrightness(self.brightness)
+    def set_brightness(self, bright, delta=0.1):
+        bright = abs(int(math.pow(float(bright),1.5)/16))
+        bright = min(bright, 255)
+        bright = max(bright,15)
+
+        self.brightness = self.brightness - delta if bright < self.brightness else bright
+        
+        self.setBrightness(int(self.brightness))
