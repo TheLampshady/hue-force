@@ -42,9 +42,9 @@ class LightStrip(Adafruit_NeoPixel):
         bright = max(bright,15)
         
         if self.brightness > 250:
-            delta = delta*0.002 
+            delta = delta*0.05 
         elif self.brightness > 240:
-            delta = delta*0.02
+            delta = delta
 
         self.brightness = self.brightness - delta if bright < self.brightness else bright
         
