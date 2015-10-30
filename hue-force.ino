@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
 
-#include <queue>
+#include <math.h>
 
 using namespace std;
 
@@ -49,7 +49,7 @@ class HueForce {
   
 };
 
-HueForce::HueForce(int8_t force, int count, int8_t pin) : delta(0){
+HueForce::HueForce(int8_t force, int count, int8_t pin) : delta(1){
     modifier = 255.0 / force
     numPixels = count;
     lightPin = pin;
@@ -128,16 +128,20 @@ HueForce::mergeResults(Acceleration *axis){
 }
 
 void HueForce::drawBrightness(float bright){
-        if (bright > 255)
-            bright = 255;
-        else if (bright < 15)
-            bright = 15;
-                
-        if (bright < brightness)
-            brightness = brightness - delta;
+        bright = abs(int(pow(float(bright),1.5)/16))
+        bright = min(bright, 255)
+        bright = max(bright,15)
+
+        if (self.brightness > 250)
+            delta = delta*0.05 
+        else if (self.brightness > 240)
+            delta = delta
+            
+        if (bright < self.brightness)
+          brightness -= delta
         else
-            brightness = bright;
-        
+          brightness = bright 
+
         pixels.setBrightness(brightness)
 }
 
@@ -165,8 +169,6 @@ void HueForce::run(void) {
     
     drawForce(axis);
 }
-
-
 
 
 int delayval = 500; // delay for half a second
