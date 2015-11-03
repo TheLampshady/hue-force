@@ -1,4 +1,4 @@
-## Project Description
+# Project Description
 This application will measure the acceleration of a device and dispaly different colors based on the force and direction. 
 
 ## Hardware
@@ -7,6 +7,8 @@ This application will measure the acceleration of a device and dispaly different
 * Neo Pixels LED Lights
 	* https://www.adafruit.com/products/1138
 
+
+#Raspberry Pi
 
 ## Installations:
 The following applications are required.
@@ -56,3 +58,12 @@ The following applications are required.
 ### Code Refences
 * https://learn.adafruit.com/neopixels-on-raspberry-pi/software
 * http://www.stuffaboutcode.com/2014/06/raspberry-pi-adxl345-accelerometer.html
+
+#Arduino
+
+##Libraries
+* http://playground.arduino.cc/Code/QueueList
+* https://github.com/adafruit/Adafruit_NeoPixel
+* https://github.com/adafruit/Adafruit_ADXL345
+* https://github.com/adafruit/Adafruit_Sensor
+* 

@@ -1,187 +1,212 @@
+#include <QueueArray.h>
+
 #include <Adafruit_ADXL345_U.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
 
+#include <QueueArray.h>
 #include <math.h>
 
-using namespace std;
+#define LIGHT_PIN 15
+#define LIGHT_COUNT 32
+#define G_FORCE 8
+#define DELAY_VALUE 500  // Delay for a period of time (in milliseconds).
 
 typedef struct {
-  int8_t x;
-  int8_t y;
-  int8_t z;
+  int x;
+  int y;
+  int z;
 } Acceleration;
 
 class HueForce {
 
  public:
+  Acceleration*
+    axis;
+    
+  QueueArray <Acceleration*> 
+    lightWake;
 
   // Constructor: number of LEDs, pin number, LED type
-  HueForce(int8_t force, int numPixels);
-  HueForce(int8_t force, int numPixels, int8_t lightPin, int8_t accelPine);
+  HueForce(int force, int pixelCount, int lightPin);
   ~HueForce();
   
-  void run(float);
-  void setLimit(int8_t force);
+  void start(void);
+  void displayStatus(Acceleration* axisPrint);
 
  private:
-  std::queue<Acceleration*> lightWake;
+    
   int 
-    numPixels;
+    lightPin,
+    modifier,
+    lighCount;
   
   float
-    modifier,
     delta,
-    brightness;
+    totalBrightness;
   
   Adafruit_NeoPixel pixels;
   Adafruit_ADXL345_Unified accel;
+
+  void setLimit(int force);
+  void initLightWake(int history);
   
-  int8_t lightPin;
+  void mergeResults(void);
+  void setAxis(void);
   
-  void initLightWake(int8_t count);
-  void mergeResults(Acceleration axis);
-  void drawForce(Acceleration axis);
-  void drawBrightness(int bright);
-  void displayStatus(void);
-  Acceleration getResults(void);
+  void drawForce(void);
+  void drawBrightness(float bright);
   
 };
 
-HueForce::HueForce(int8_t force, int count, int8_t pin) : delta(1){
-    modifier = 255.0 / force
-    numPixels = count;
+HueForce::HueForce(int force, int pixelCount, int pin) : delta(1), totalBrightness(0){
+    modifier = int(255.0 / force);
+    lighCount = pixelCount;
     lightPin = pin;
 
+    axis = new Acceleration;
+    Serial.print("RUN AXIS1: "); Serial.println((int)axis);
+
     accel = Adafruit_ADXL345_Unified(12345);
-    accel.begin();
+    if(!accel.begin()){
+      Serial.println("Ooops, no ADXL345 detected ... Check your wiring!");
+      while(1);
+    }
     
-    pixels = Adafruit_NeoPixel(numPixels, lightPin, NEO_GRB + NEO_KHZ800);
+    pixels = Adafruit_NeoPixel(lighCount, lightPin, NEO_GRB + NEO_KHZ800);
     pixels.begin();
+    pixels.setBrightness(0);
+    pixels.show();
     
     setLimit(force);
     initLightWake(5);
+    
 }
 
 HueForce::~HueForce(){
-    if(accel)   delete accel;
-    if(pixels)  delete pixels;
+    //delete axis;
+    //delete accel;
+    //delete pixels;
 
 }
 
-HueForce::setLimit(int8_t force){
+
+void HueForce::setLimit(int force){
     switch(force) {
         case 2 : accel.setRange(ADXL345_RANGE_2_G);
-        case 4 : accel.setRange(ADXL345_RANGE_2_G);
-        case 8 : accel.setRange(ADXL345_RANGE_2_G);
-        case 16 : accel.setRange(ADXL345_RANGE_2_G);
+        case 4 : accel.setRange(ADXL345_RANGE_4_G);
+        case 8 : accel.setRange(ADXL345_RANGE_8_G);
+        case 16 : accel.setRange(ADXL345_RANGE_16_G);
     }
 }
 
-HueForce::initLightWake(int8_t count){
-    Acceleration *axis;
-    
-    for (int i = 0; i < count; ++i){
-        axis = new Acceleration;
-        axis.x = 0;
-        axis.y = 0;
-        axis.z = 0;
+void HueForce::initLightWake(int history){
+    Acceleration *initAxis;
+
+    for (int i = 0; i < history; ++i){
+        initAxis = new Acceleration;
+        initAxis->x = 1;
+        initAxis->y = 1;
+        initAxis->z = 1;
         
-        lightWake.push(axis);
+        lightWake.push(initAxis);
     }
 }
 
-HueForce::getResults(){
-    Acceleration *axis;
+void HueForce::setAxis(){
     sensors_event_t event; 
     accel.getEvent(&event);
     
-    axis = new Acceleration;
-    axis->x = event.acceleration.x;
-    axis->y = event.acceleration.y;
-    axis->z = event.acceleration.z;
-    
-    mergeResults(axis);
-    
+    axis->x = int(abs(event.acceleration.x / SENSORS_GRAVITY_STANDARD));
+    axis->y = int(abs(event.acceleration.y / SENSORS_GRAVITY_STANDARD));
+    axis->z = int(abs(event.acceleration.z / SENSORS_GRAVITY_STANDARD));
+   
+    //mergeResults();
 }
 
-HueForce::mergeResults(Acceleration *axis){
+void HueForce::mergeResults(){
+    Acceleration *iter;
     int x=0, y=0, z=0;
-    int size;
-
-    lightWake.push(axis);
-    for (int i = 0; i < lightWake; ++i){
-        axis = lightWake.pop();
-        x += axis->x;
-        y += axis->y;
-        z += axis->z;
-        lightWake.push(axis);
-    }
-    size = lightWake.size()
-    axis = lightWake.pop();
-    axis->x = x/size;
-    axis->y = y/size;
-    axis->z = z/size;
+    int queueSize;
     
-    return axis;
+    lightWake.push(axis);
+    queueSize = lightWake.count();
+
+    for (int i = 0; i < queueSize; i++){
+        iter = lightWake.pop();
+        x += iter->x;
+        y += iter->y;
+        z += iter->z;
+        lightWake.push(iter);
+    }
+
+    axis = lightWake.pop();
+    
+    axis->x = int(max(min(x/queueSize, 255), 0));
+    axis->y = int(max(min(y/queueSize, 255), 0));
+    axis->z = int(max(min(z/queueSize, 255), 0));
 }
 
 void HueForce::drawBrightness(float bright){
-        bright = abs(int(pow(float(bright),1.5)/16))
-        bright = min(bright, 255)
-        bright = max(bright,15)
+        bright = abs(float(pow(float(bright),1.5)/16));
+        bright = max(min(bright, 255), 15);
 
-        if (self.brightness > 250)
-            delta = delta*0.05 
-        else if (self.brightness > 240)
-            delta = delta
+        if (totalBrightness > 250)
+            delta = delta*0.05 ;
+        else if (totalBrightness > 240)
+            delta = delta;
             
-        if (bright < self.brightness)
-          brightness -= delta
+        if (bright < totalBrightness)
+          totalBrightness -= delta;
         else
-          brightness = bright 
+          totalBrightness = bright ;
 
-        pixels.setBrightness(brightness)
+        pixels.setBrightness(totalBrightness);
 }
 
-void HueForce::drawForce(Acceleration *axis) {
-    uint8_t red, blue, green;
-    uint32_t color;
+void HueForce::drawForce() {
+    int red, blue, green;
     
     red = abs(int(axis->x * modifier));
-    blue = abs(int(axis->x * modifier));
-    green = abs(int(axis->x * modifier));
-    color = pixels.Color(red, blue, green);
-            
-    for(int i=0; i < numPixels; i++){  
-        pixels.setPixelColor(i, color); // Moderately bright green color
+    green = abs(int(axis->y * modifier));
+    blue = abs(int(axis->z * modifier));
+
+    for(int i = 0; i < lighCount; i++){
+        pixels.setPixelColor(i, pixels.Color(red, green, blue));
         pixels.show(); // This sends the updated pixel color to the hardware.
     }
-    
+
     drawBrightness(red+green+blue);
-    pixels.show();
-}
-
-void HueForce::run(void) {
-    Acceleration *axis;
-    axis = getResults();
     
-    drawForce(axis);
+    pixels.show();
+
+}
+void HueForce::displayStatus(Acceleration* axisPrint) {
+  Serial.print("X: ");Serial.print(axisPrint->x);Serial.print(" ");
+  Serial.print("Y: ");Serial.print(axisPrint->y);Serial.print(" ");
+  Serial.print("Z: ");Serial.print(axisPrint->z);Serial.print(" ");
+  Serial.print("B: ");Serial.println(totalBrightness);
 }
 
+void HueForce::start(void) {
+    setAxis();
+    drawForce();
+}
 
-int delayval = 500; // delay for half a second
+HueForce* hueForce;
 
 void setup() {
   Serial.begin(9600);
-  HueForce hueForce = HueForce(8, 32, 15)
+  while (!Serial) ;
+  hueForce = new HueForce(G_FORCE, LIGHT_COUNT, LIGHT_PIN);
 }
 
 
 void loop() {
-
-  hueForce.run()
-  delay(delayval); // Delay for a period of time (in milliseconds).
+  hueForce->start();
+  hueForce->displayStatus(hueForce->axis);
+  //delay(DELAY_VALUE);
+  delay(5000);
 }
 
