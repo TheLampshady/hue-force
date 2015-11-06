@@ -5,28 +5,108 @@
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
 
-#include <QueueArray.h>
+//#include <QueueArray.h>
 #include <math.h>
 
 #define LIGHT_PIN 15
 #define LIGHT_COUNT 32
 #define G_FORCE 8
-#define DELAY_VALUE 500  // Delay for a period of time (in milliseconds).
+#define DELAY_VALUE 10  // Delay for a period of time (in milliseconds).
+#define DEBUG false
 
-typedef struct {
+// ----------- ACCEL AXIS STRUCT ------------
+typedef struct ANode{
   int x;
   int y;
   int z;
+  struct ANode * n;
 } Acceleration;
+
+// ----------- QUEUE ------------
+class AxisQueue
+{
+private:
+  Acceleration * front;                       // pointer to front of Queue
+  Acceleration * rear;                        // pointer to rear of Queue
+                        // current number of items in Queue
+
+
+public:
+  AxisQueue(int amount);                 // create queue with a qs limit
+  ~AxisQueue();
+  void addAxis(Acceleration * axis);
+  int * getAverage(void);
+  void printQueue(void);
+};
+
+AxisQueue::AxisQueue(int amount){
+    Acceleration * tmp;
+  
+    front = NULL;
+    rear = NULL;
+    
+    for(int x = 0; x < amount; x++){
+      tmp = new Acceleration;
+      *tmp = {1,1,1,NULL};
+      tmp->n = front;
+      front = tmp;
+      if (x == 0) rear = front;
+    }
+  
+}
+
+void AxisQueue::addAxis(Acceleration * axis){
+    rear -> n = front;
+    rear = front;
+    front = front -> n;
+    rear -> n = NULL;
+
+    rear->x = axis->x;
+    rear->y = axis->y;
+    rear->z = axis->z;
+}
+
+int * AxisQueue::getAverage(){
+    Acceleration * iter = front;
+    int * avg = new (int[3]){0,0,0};
+    int counter = 0;
+
+    while (iter != NULL){
+          avg[0] += iter->x;
+          avg[1] += iter->y;
+          avg[2] += iter->z;
+          iter = iter->n;
+          counter++;
+    }
+    avg[0] = int(max(min(avg[0]/counter, 255), 0));
+    avg[1] = int(max(min(avg[1]/counter, 255), 0));
+    avg[2] = int(max(min(avg[2]/counter, 255), 0));
+    return avg;
+}
+
+void AxisQueue::printQueue(){
+    Acceleration * iter = front;
+    Serial.println("Queue Status!");
+    while (iter != NULL){
+        Serial.print("X: ");Serial.print(iter->x);Serial.print(" ");
+        Serial.print("Y: ");Serial.print(iter->y);Serial.print(" ");
+        Serial.print("Z: ");Serial.println(iter->z);
+        iter = iter->n;
+    }
+    Serial.println("");
+}
+
+
+// --------------- HueForce ----------------
 
 class HueForce {
 
  public:
   Acceleration*
     axis;
-    
-  QueueArray <Acceleration*> 
-    lightWake;
+  
+  //QueueArray <Acceleration*>
+  AxisQueue * lightWake;
 
   // Constructor: number of LEDs, pin number, LED type
   HueForce(int force, int pixelCount, int lightPin);
@@ -50,7 +130,6 @@ class HueForce {
   Adafruit_ADXL345_Unified accel;
 
   void setLimit(int force);
-  void initLightWake(int history);
   
   void mergeResults(void);
   void setAxis(void);
@@ -60,13 +139,13 @@ class HueForce {
   
 };
 
-HueForce::HueForce(int force, int pixelCount, int pin) : delta(1), totalBrightness(0){
-    modifier = int(255.0 / force);
+HueForce::HueForce(int force, int pixelCount, int pin) : delta(2), totalBrightness(0){
+    modifier = float(255.0 / force);
     lighCount = pixelCount;
     lightPin = pin;
-
+    lightWake = new AxisQueue(5);
+    
     axis = new Acceleration;
-    Serial.print("RUN AXIS1: "); Serial.println((int)axis);
 
     accel = Adafruit_ADXL345_Unified(12345);
     if(!accel.begin()){
@@ -80,8 +159,6 @@ HueForce::HueForce(int force, int pixelCount, int pin) : delta(1), totalBrightne
     pixels.show();
     
     setLimit(force);
-    initLightWake(5);
-    
 }
 
 HueForce::~HueForce(){
@@ -101,28 +178,15 @@ void HueForce::setLimit(int force){
     }
 }
 
-void HueForce::initLightWake(int history){
-    Acceleration *initAxis;
-
-    for (int i = 0; i < history; ++i){
-        initAxis = new Acceleration;
-        initAxis->x = 1;
-        initAxis->y = 1;
-        initAxis->z = 1;
-        
-        lightWake.push(initAxis);
-    }
-}
-
 void HueForce::setAxis(){
     sensors_event_t event; 
     accel.getEvent(&event);
     
-    axis->x = int(abs(event.acceleration.x / SENSORS_GRAVITY_STANDARD));
-    axis->y = int(abs(event.acceleration.y / SENSORS_GRAVITY_STANDARD));
-    axis->z = int(abs(event.acceleration.z / SENSORS_GRAVITY_STANDARD));
+    axis->x = int(abs(event.acceleration.x * modifier / SENSORS_GRAVITY_STANDARD));
+    axis->y = int(abs(event.acceleration.y * modifier / SENSORS_GRAVITY_STANDARD));
+    axis->z = int(abs(event.acceleration.z * modifier / SENSORS_GRAVITY_STANDARD));
    
-    //mergeResults();
+    mergeResults();
 }
 
 void HueForce::mergeResults(){
@@ -130,47 +194,41 @@ void HueForce::mergeResults(){
     int x=0, y=0, z=0;
     int queueSize;
     
-    lightWake.push(axis);
-    queueSize = lightWake.count();
-
-    for (int i = 0; i < queueSize; i++){
-        iter = lightWake.pop();
-        x += iter->x;
-        y += iter->y;
-        z += iter->z;
-        lightWake.push(iter);
-    }
-
-    axis = lightWake.pop();
+    lightWake->addAxis(axis);
+    int * average = lightWake->getAverage();
     
-    axis->x = int(max(min(x/queueSize, 255), 0));
-    axis->y = int(max(min(y/queueSize, 255), 0));
-    axis->z = int(max(min(z/queueSize, 255), 0));
+    axis->x = average[0];
+    axis->y = average[1];
+    axis->z = average[2];
+    delete[] average;
 }
 
 void HueForce::drawBrightness(float bright){
-        bright = abs(float(pow(float(bright),1.5)/16));
-        bright = max(min(bright, 255), 15);
-
-        if (totalBrightness > 250)
-            delta = delta*0.05 ;
-        else if (totalBrightness > 240)
-            delta = delta;
-            
-        if (bright < totalBrightness)
-          totalBrightness -= delta;
-        else
-          totalBrightness = bright ;
-
-        pixels.setBrightness(totalBrightness);
+      float newDelta;
+      bright = abs(float(pow(float(bright),1.5)/16));
+      bright = (bright * 1.1) - 25.5;
+      bright = max(min(bright, 255), 10);
+      
+      
+      if (totalBrightness > 250)
+          newDelta = delta * 0.05;
+      else
+          newDelta = delta;
+          
+      if (bright < totalBrightness)
+        totalBrightness -= newDelta;
+      else
+        totalBrightness = bright ;
+      
+      pixels.setBrightness(totalBrightness);
 }
 
 void HueForce::drawForce() {
     int red, blue, green;
     
-    red = abs(int(axis->x * modifier));
-    green = abs(int(axis->y * modifier));
-    blue = abs(int(axis->z * modifier));
+    red = abs(int(axis->x));
+    green = abs(int(axis->y));
+    blue = abs(int(axis->z));
 
     for(int i = 0; i < lighCount; i++){
         pixels.setPixelColor(i, pixels.Color(red, green, blue));
@@ -198,15 +256,16 @@ HueForce* hueForce;
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial) ;
+  if (DEBUG)
+      while (!Serial) ;
   hueForce = new HueForce(G_FORCE, LIGHT_COUNT, LIGHT_PIN);
 }
 
 
 void loop() {
-  hueForce->start();
-  hueForce->displayStatus(hueForce->axis);
-  //delay(DELAY_VALUE);
-  delay(5000);
+    hueForce->start();
+    if (DEBUG)
+        hueForce->displayStatus(hueForce->axis);
+    delay(DELAY_VALUE);
 }
 
